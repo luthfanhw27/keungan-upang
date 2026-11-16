@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0F19">
+<title>Keuangan Keluarga Upang</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;500;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0B0F19;--cyan:#22D3EE;--violet:#A855F7;--coral:#FF6B6B}
+html,body{background:var(--bg);color:#E6EAF2;font-family:'DM Sans',system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+h1,h2,.display{font-family:'Sora',sans-serif}
+body{background-image:radial-gradient(60% 40% at 10% 0%,rgba(34,211,238,.13),transparent),radial-gradient(50% 40% at 100% 20%,rgba(168,85,247,.14),transparent);background-attachment:fixed;min-height:100vh}
+.glass{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:20px}
+.key{height:68px;border-radius:50%;font:600 24px 'Sora';transition:.15s;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px)}
+.key:active{background:rgba(34,211,238,.22);box-shadow:0 0 26px rgba(34,211,238,.65);border-color:var(--cyan);transform:scale(.95)}
+.dot{width:14px;height:14px;border-radius:50%;border:1.5px solid rgba(255,255,255,.35);transition:.2s}
+.dot.on{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 14px var(--cyan)}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+.grad{background:linear-gradient(90deg,#fff,var(--cyan) 55%,var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.inp{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 13px;color:#fff;outline:none;font-size:15px}
+.inp:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.15)}
+.inp option{background:#141a2b}
+.btn-scan{background:linear-gradient(135deg,var(--violet),#7C3AED 50%,var(--cyan));box-shadow:0 0 30px rgba(168,85,247,.45)}
+.hidden{display:none!important}
+label.l{font-size:12px;color:#94a3b8;margin-bottom:4px;display:block}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lock" class="fixed inset-0 z-50 flex flex-col items-center justify-center px-8" style="background:var(--bg)">
+  <div class="absolute inset-0 -z-10" style="background:radial-gradient(circle at 50% 30%,rgba(34,211,238,.18),transparent 55%),radial-gradient(circle at 80% 90%,rgba(168,85,247,.2),transparent 50%)"></div>
+  <i data-lucide="shield-check" class="w-9 h-9 mb-4" style="color:var(--cyan);filter:drop-shadow(0 0 10px var(--cyan))"></i>
+  <h1 class="text-center leading-tight mb-1"><span class="block text-sm font-medium tracking-[.35em] text-slate-400">Keuangan Keluarga</span><span class="grad block text-5xl font-extrabold tracking-tight">Upang</span></h1>
+  <p class="text-slate-500 text-sm mt-3 mb-7">Masukkan PIN 6 digit</p>
+  <div id="dots" class="flex gap-3 mb-9"></div>
+  <div id="pad" class="grid grid-cols-3 gap-4 w-full max-w-[290px]"></div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden max-w-xl mx-auto px-4 pt-4 pb-28" style="padding-top:max(16px,env(safe-area-inset-top))">
+  <header class="flex items-center justify-between mb-4">
+    <div><p class="text-xs text-slate-400">Keuangan Keluarga</p><h2 class="grad text-2xl font-extrabold">Upang</h2></div>
+    <div class="flex gap-2">
+      <button onclick="sync(true)" id="btnSync" class="glass w-10 h-10 grid place-items-center" aria-label="Sinkronkan"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+      <button onclick="openSet()" class="glass w-10 h-10 grid place-items-center" aria-label="Pengaturan"><i data-lucide="settings" class="w-4 h-4"></i></button>
+      <button onclick="lockApp()" class="glass w-10 h-10 grid place-items-center" style="color:var(--coral)" aria-label="Kunci aplikasi"><i data-lucide="lock" class="w-4 h-4"></i></button>
+    </div>
+  </header>
+
+  <section class="glass p-5 mb-3" style="box-shadow:0 0 40px rgba(34,211,238,.08)">
+    <p class="text-xs text-slate-400">Saldo saat ini</p>
+    <p id="saldo" class="display text-3xl font-bold mt-1">Rp 0</p>
+    <p id="syncState" class="text-[11px] text-slate-500 mt-1">Belum terhubung ke Google Sheets</p>
+  </section>
+
+  <div class="grid grid-cols-2 gap-3 mb-3">
+    <div class="glass p-4"><div class="flex items-center gap-1.5 text-xs text-slate-400"><i data-lucide="arrow-down-left" class="w-4 h-4" style="color:var(--cyan)"></i>Pemasukan bulan ini</div><p id="inc" class="display font-bold mt-1" style="color:var(--cyan)">Rp 0</p></div>
+    <div class="glass p-4"><div class="flex items-center gap-1.5 text-xs text-slate-400"><i data-lucide="arrow-up-right" class="w-4 h-4" style="color:var(--coral)"></i>Pengeluaran bulan ini</div><p id="exp" class="display font-bold mt-1" style="color:var(--coral)">Rp 0</p></div>
+  </div>
+
+  <button onclick="$('scanFile').click()" class="btn-scan w-full rounded-2xl py-4 flex items-center justify-center gap-2 font-bold text-white mb-3 active:scale-[.98] transition"><i data-lucide="scan-line" class="w-5 h-5"></i>Scan Struk Belanja</button>
+  <input id="scanFile" type="file" accept="image/*" class="hidden">
+  <div class="grid grid-cols-2 gap-3 mb-4">
+    <button onclick="openForm(null,'in')" class="glass py-3 flex items-center justify-center gap-2 font-medium" style="color:var(--cyan)"><i data-lucide="plus" class="w-4 h-4"></i>Pemasukan</button>
+    <button onclick="openForm(null,'out')" class="glass py-3 flex items-center justify-center gap-2 font-medium" style="color:var(--coral)"><i data-lucide="minus" class="w-4 h-4"></i>Pengeluaran</button>
+  </div>
+
+  <section class="glass p-4 mb-4">
+    <h3 class="font-semibold text-sm mb-3">Pengeluaran per kategori</h3>
+    <div id="chartWrap" class="relative h-52"><canvas id="chart"></canvas></div>
+    <p id="chartEmpty" class="hidden text-center text-sm text-slate-500 py-14">Belum ada pengeluaran di bulan ini.</p>
+  </section>
+
+  <section>
+    <h3 class="font-semibold mb-2">Riwayat transaksi</h3>
+    <div class="grid grid-cols-2 gap-2 mb-2">
+      <input id="fMonth" type="month" class="inp">
+      <select id="fType" class="inp"><option value="">Semua tipe</option><option value="in">Pemasukan</option><option value="out">Pengeluaran</option></select>
+    </div>
+    <div class="relative mb-3"><i data-lucide="search" class="w-4 h-4 absolute left-3 top-3.5 text-slate-500"></i><input id="fSearch" class="inp" style="padding-left:36px" placeholder="Cari keterangan / kategori…"></div>
+    <div id="list" class="space-y-2"></div>
+  </section>
+</div>
+
+<!-- MODAL FORM -->
+<div id="mForm" class="hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center">
+  <div class="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5 pb-8" style="background:#10162a;border:1px solid rgba(255,255,255,.1)">
+    <div class="flex justify-between items-center mb-3"><h3 id="fTitle" class="display font-bold text-lg">Transaksi</h3><button onclick="closeM('mForm')" class="p-2"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+    <div id="aiNote" class="hidden text-xs rounded-xl p-3 mb-3" style="background:rgba(168,85,247,.15);color:#d8b4fe"><i data-lucide="sparkles" class="w-3.5 h-3.5 inline"></i> Diisi otomatis oleh AI. Periksa lagi sebelum menyimpan.</div>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <button id="tOut" onclick="setType('out')" class="py-2.5 rounded-xl font-semibold border">Pengeluaran</button>
+      <button id="tIn" onclick="setType('in')" class="py-2.5 rounded-xl font-semibold border">Pemasukan</button>
+    </div>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-2"><div><label class="l">Tanggal</label><input id="xDate" type="date" class="inp"></div><div><label class="l">Nominal (Rp)</label><input id="xAmt" inputmode="numeric" class="inp" placeholder="0"></div></div>
+      <div class="grid grid-cols-2 gap-2"><div><label class="l">Kategori</label><select id="xCat" class="inp"></select></div><div><label class="l">Metode</label><select id="xMet" class="inp"><option>Tunai</option><option>Transfer</option><option>E-Wallet</option><option>Kartu</option></select></div></div>
+      <div><label class="l">Keterangan / Toko</label><input id="xDesc" class="inp" placeholder="Contoh: Alfamart"></div>
+    </div>
+    <div class="flex gap-2 mt-5">
+      <button id="xDel" onclick="delTx()" class="hidden px-4 rounded-xl border" style="color:var(--coral);border-color:rgba(255,107,107,.4)"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+      <button onclick="saveTx()" class="flex-1 py-3 rounded-xl font-bold text-[#0B0F19]" style="background:var(--cyan);box-shadow:0 0 22px rgba(34,211,238,.4)">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SETTINGS -->
+<div id="mSet" class="hidden fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center">
+  <div class="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl p-5 pb-8" style="background:#10162a;border:1px solid rgba(255,255,255,.1)">
+    <div class="flex justify-between items-center mb-3"><h3 class="display font-bold text-lg">Pengaturan</h3><button onclick="closeM('mSet')" class="p-2"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+    <div class="space-y-3">
+      <div><label class="l">PIN baru (6 digit, kosongkan jika tidak diganti)</label><input id="sPin" inputmode="numeric" maxlength="6" class="inp" placeholder="••••••"></div>
+      <div><label class="l">URL Web App Google Apps Script</label><input id="sUrl" class="inp" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div class="grid grid-cols-2 gap-2"><div><label class="l">Penyedia AI</label><select id="sProv" class="inp"><option value="gemini">Gemini</option><option value="openai">OpenAI</option></select></div><div><label class="l">Model (opsional)</label><input id="sModel" class="inp" placeholder="gemini-2.5-flash"></div></div>
+      <div><label class="l">API Key (disimpan hanya di browser ini)</label><input id="sKey" type="password" class="inp" placeholder="AIza… / sk-…"></div>
+    </div>
+    <button onclick="saveSet()" class="w-full mt-5 py-3 rounded-xl font-bold text-[#0B0F19]" style="background:var(--cyan)">Simpan pengaturan</button>
+  </div>
+</div>
+
+<div id="loading" class="hidden fixed inset-0 z-[60] bg-black/70 grid place-items-center"><div class="glass px-6 py-5 text-center"><i data-lucide="loader-2" class="w-7 h-7 mx-auto animate-spin" style="color:var(--violet)"></i><p id="loadTxt" class="text-sm mt-2">Memproses…</p></div></div>
+<div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-6 z-[70] glass px-4 py-2.5 text-sm"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const LS=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}};
+const put=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const DEFAULT_PIN='123456'; // ← ubah PIN bawaan di sini
+let cfg=Object.assign({pin:DEFAULT_PIN,provider:'gemini',model:'',key:'',url:''},LS('cfg',{}));
+let tx=LS('tx',[]), pin='', ftype='out', editId=null, chart=null;
+const CAT={out:['Belanja Dapur','Tagihan','Anak','Transportasi','Kesehatan','Pendidikan','Hiburan','Lainnya'],in:['Gaji','Usaha','Bonus','Hadiah','Lainnya']};
+const COL=['#FF6B6B','#A855F7','#22D3EE','#FBBF24','#34D399','#60A5FA','#F472B6','#94A3B8'];
+const ICON={'Belanja Dapur':'shopping-basket','Tagihan':'receipt','Anak':'baby','Transportasi':'car','Kesehatan':'heart-pulse','Pendidikan':'graduation-cap','Hiburan':'clapperboard','Gaji':'wallet','Usaha':'store','Bonus':'gift','Hadiah':'gift','Lainnya':'circle-ellipsis'};
+const rp=n=>'Rp '+Math.round(n||0).toLocaleString('id-ID');
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const icons=()=>lucide.createIcons();
+function toast(m){const t=$('toast');t.textContent=m;t.classList.remove('hidden');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.add('hidden'),2800)}
+function busy(on,txt){$('loading').classList.toggle('hidden',!on);if(txt)$('loadTxt').textContent=txt}
+
+/* ---------- PIN ---------- */
+function drawDots(){$('dots').innerHTML=Array.from({length:6},(_,i)=>`<span class="dot ${i<pin.length?'on':''}"></span>`).join('')}
+(function(){const k=['1','2','3','4','5','6','7','8','9','','0','⌫'];
+$('pad').innerHTML=k.map(x=>x===''?'<span></span>':`<button class="key" onclick="press('${x}')">${x}</button>`).join('');drawDots()})();
+function press(k){
+  if(k==='⌫')pin=pin.slice(0,-1);else if(pin.length<6)pin+=k;
+  drawDots();
+  if(pin.length===6){
+    if(pin===String(cfg.pin)){setTimeout(unlock,150)}
+    else{$('dots').classList.add('shake');setTimeout(()=>{$('dots').classList.remove('shake');pin='';drawDots()},450)}
+  }
+}
+function unlock(){pin='';drawDots();$('lock').classList.add('hidden');$('app').classList.remove('hidden');render();if(cfg.url)sync(false)}
+function lockApp(){$('app').classList.add('hidden');$('lock').classList.remove('hidden');pin='';drawDots()}
+
+/* ---------- RENDER ---------- */
+function render(){
+  const m=$('fMonth').value,t=$('fType').value,q=$('fSearch').value.toLowerCase();
+  const all=[...tx].sort((a,b)=>b.tanggal.localeCompare(a.tanggal)||b.id.localeCompare(a.id));
+  const inM=all.filter(x=>!m||x.tanggal.startsWith(m));
+  const sum=(arr,ty)=>arr.filter(x=>x.tipe===ty).reduce((s,x)=>s+x.nominal,0);
+  $('saldo').textContent=rp(sum(tx,'in')-sum(tx,'out'));
+  $('inc').textContent=rp(sum(inM,'in'));$('exp').textContent=rp(sum(inM,'out'));
+  const rows=inM.filter(x=>(!t||x.tipe===t)&&(!q||(x.keterangan+' '+x.kategori).toLowerCase().includes(q)));
+  $('list').innerHTML=rows.length?rows.map(x=>{const o=x.tipe==='out';return `<button onclick="openForm('${x.id}')" class="glass w-full p-3 flex items-center gap-3 text-left">
+    <span class="w-10 h-10 rounded-xl grid place-items-center shrink-0" style="background:${o?'rgba(255,107,107,.14)':'rgba(34,211,238,.14)'};color:${o?'var(--coral)':'var(--cyan)'}"><i data-lucide="${ICON[x.kategori]||'circle'}" class="w-5 h-5"></i></span>
+    <span class="flex-1 min-w-0"><span class="block font-medium truncate">${esc(x.keterangan||x.kategori)}</span><span class="block text-xs text-slate-400">${esc(x.kategori)} • ${fmtD(x.tanggal)} • ${esc(x.metode||'')}${x.pending?' • ⏳':''}</span></span>
+    <span class="font-bold text-sm whitespace-nowrap" style="color:${o?'var(--coral)':'var(--cyan)'}">${o?'-':'+'}${rp(x.nominal)}</span></button>`}).join(''):'<p class="text-center text-slate-500 text-sm py-8">Tidak ada transaksi. Tekan tombol di atas untuk mulai mencatat.</p>';
+  const by={};inM.filter(x=>x.tipe==='out').forEach(x=>by[x.kategori]=(by[x.kategori]||0)+x.nominal);
+  const labels=Object.keys(by);if(chart)chart.destroy();
+  $('chartWrap').classList.toggle('hidden',!labels.length);$('chartEmpty').classList.toggle('hidden',!!labels.length);
+  if(labels.length)chart=new Chart($('chart'),{type:'doughnut',data:{labels,datasets:[{data:labels.map(l=>by[l]),backgroundColor:labels.map((_,i)=>COL[i%COL.length]),borderColor:'#0B0F19',borderWidth:3}]},options:{maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{color:'#cbd5e1',boxWidth:10,font:{size:11}}},tooltip:{callbacks:{label:c=>` ${c.label}: ${rp(c.parsed)}`}}}}});
+  $('syncState').textContent=cfg.url?($('syncState').dataset.s||'Terhubung ke Google Sheets'):'Belum terhubung ke Google Sheets (data tersimpan di browser)';
+  icons();
+}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtD=s=>{const[y,m,d]=s.split('-');return `${d}/${m}/${y}`};
+['fMonth','fType'].forEach(i=>$(i).addEventListener('change',render));$('fSearch').addEventListener('input',render);
+$('fMonth').value=today().slice(0,7);
+
+/* ---------- FORM ---------- */
+function setType(t){
+  ftype=t;
+  [['tOut','out','var(--coral)'],['tIn','in','var(--cyan)']].forEach(([id,k,c])=>{const b=$(id);const a=k===t;b.style.background=a?c:'transparent';b.style.color=a?'#0B0F19':'#94a3b8';b.style.borderColor=a?c:'rgba(255,255,255,.12)'});
+  $('xCat').innerHTML=CAT[t].map(c=>`<option>${c}</option>`).join('');
+}
+function openForm(id,type,pre){
+  editId=id;const x=id?tx.find(t=>t.id===id):null;
+  setType(x?x.tipe:(type||'out'));
+  $('fTitle').textContent=x?'Ubah transaksi':'Catat transaksi';
+  $('xDate').value=x?x.tanggal:(pre?.tanggal||today());
+  $('xAmt').value=x?x.nominal:(pre?.nominal||'');
+  $('xDesc').value=x?x.keterangan:(pre?.keterangan||'');
+  $('xMet').value=x?x.metode:'Tunai';
+  const cat=x?x.kategori:pre?.kategori;if(cat&&![...$('xCat').options].some(o=>o.value===cat))$('xCat').add(new Option(cat));
+  if(cat)$('xCat').value=cat;
+  $('xDel').classList.toggle('hidden',!x);$('aiNote').classList.toggle('hidden',!pre);
+  $('mForm').classList.remove('hidden');icons();
+}
+const closeM=id=>$(id).classList.add('hidden');
+async function saveTx(){
+  const nominal=parseInt(String($('xAmt').value).replace(/\D/g,''))||0;
+  if(!nominal||!$('xDate').value)return toast('Isi tanggal dan nominal dulu');
+  const t={id:editId||('T'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)),tanggal:$('xDate').value,tipe:ftype,kategori:$('xCat').value,keterangan:$('xDesc').value.trim(),nominal,metode:$('xMet').value};
+  tx=tx.filter(x=>x.id!==t.id);tx.push(t);put('tx',tx);closeM('mForm');render();
+  if(cfg.url){try{await gas('upsert',t);toast('Tersimpan & tersinkron ✓')}catch(e){t.pending=true;put('tx',tx);render();toast('Tersimpan lokal, gagal sinkron')}}else toast('Tersimpan di browser');
+}
+async function delTx(){
+  if(!confirm('Hapus transaksi ini?'))return;
+  const id=editId;tx=tx.filter(x=>x.id!==id);put('tx',tx);closeM('mForm');render();
+  if(cfg.url){try{await gas('delete',{id})}catch(e){toast('Gagal hapus di Google Sheets')}}
+}
+
+/* ---------- GOOGLE SHEETS ---------- */
+async function gas(action,data){
+  const r=await fetch(cfg.url,{method:'POST',body:JSON.stringify({action,data})});
+  const j=await r.json();if(!j.ok)throw new Error(j.error||'gagal');return j;
+}
+async function sync(manual){
+  if(!cfg.url){if(manual)toast('Isi URL Web App di Pengaturan');return}
+  $('btnSync').querySelector('svg')?.classList.add('animate-spin');
+  try{
+    for(const t of tx.filter(x=>x.pending)){await gas('upsert',t);delete t.pending}
+    const r=await fetch(cfg.url+'?action=list');const j=await r.json();if(!j.ok)throw new Error(j.error);
+    tx=j.data.map(d=>({id:String(d.id),tanggal:String(d.tanggal).slice(0,10),tipe:d.tipe==='Pemasukan'?'in':'out',kategori:d.kategori,keterangan:d.keterangan,nominal:Number(d.nominal)||0,metode:d.metode}));
+    put('tx',tx);$('syncState').dataset.s='Tersinkron '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    if(manual)toast('Sinkronisasi berhasil ✓');
+  }catch(e){$('syncState').dataset.s='Gagal sinkron — memakai data lokal';if(manual)toast('Gagal sinkron: '+e.message)}
+  $('btnSync').querySelector('svg')?.classList.remove('animate-spin');render();
+}
+
+/* ---------- SCAN STRUK ---------- */
+$('scanFile').addEventListener('change',async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(!cfg.key){toast('Isi API Key AI di Pengaturan dulu');return openSet()}
+  busy(true,'AI membaca struk…');
+  try{const b64=await shrink(f);const r=await readReceipt(b64);busy(false);
+    openForm(null,'out',{tanggal:/^\d{4}-\d{2}-\d{2}$/.test(r.tanggal)?r.tanggal:today(),nominal:parseInt(String(r.total).replace(/\D/g,''))||'',keterangan:r.merchant||'',kategori:CAT.out.includes(r.kategori)?r.kategori:'Lainnya'});
+  }catch(err){busy(false);toast('Gagal membaca struk: '+err.message)}
+});
+function shrink(file){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const s=Math.min(1,1400/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=img.width*s;c.height=img.height*s;c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.82).split(',')[1])};img.onerror=()=>rej(new Error('gambar tidak valid'));img.src=URL.createObjectURL(file)})}
+async function readReceipt(b64){
+  const prompt=`Ini foto struk belanja. Ekstrak dan balas HANYA JSON: {"tanggal":"YYYY-MM-DD","merchant":"nama toko","total":angka_bulat_rupiah_tanpa_titik,"kategori":"salah satu dari: ${CAT.out.join(', ')}"}. Total adalah jumlah akhir yang dibayar. Jika tanggal tidak terbaca, isi "".`;
+  let text;
+  if(cfg.provider==='openai'){
+    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+cfg.key},body:JSON.stringify({model:cfg.model||'gpt-4o-mini',response_format:{type:'json_object'},messages:[{role:'user',content:[{type:'text',text:prompt},{type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b64}}]}]})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);text=j.choices[0].message.content;
+  }else{
+    const m=cfg.model||'gemini-2.5-flash';
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(cfg.key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:'image/jpeg',data:b64}}]}],generationConfig:{responseMimeType:'application/json',temperature:0}})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);text=j.candidates[0].content.parts.map(p=>p.text||'').join('');
+  }
+  return JSON.parse(text.replace(/```json|```/g,'').trim());
+}
+
+/* ---------- PENGATURAN ---------- */
+function openSet(){$('sPin').value='';$('sUrl').value=cfg.url;$('sProv').value=cfg.provider;$('sModel').value=cfg.model;$('sKey').value=cfg.key;$('mSet').classList.remove('hidden');icons()}
+function saveSet(){
+  const p=$('sPin').value.trim();if(p&&!/^\d{6}$/.test(p))return toast('PIN harus 6 digit angka');
+  if(p)cfg.pin=p;cfg.url=$('sUrl').value.trim();cfg.provider=$('sProv').value;cfg.model=$('sModel').value.trim();cfg.key=$('sKey').value.trim();
+  put('cfg',cfg);closeM('mSet');toast('Pengaturan disimpan');cfg.url?sync(true):render();
+}
+icons();
+</script>
+</body>
+</html>
